@@ -92,7 +92,7 @@ const AudioEngine = (() => {
     if (instances[mode.id]) return instances[mode.id];
     const list = mode.tracks.map((t) => {
       const a = new Audio();
-      a.src = t.file;
+      a.src = t.file.split("/").map(encodeURIComponent).join("/"); // 中文文件名做 URL 编码，兼容 iOS Safari
       a.loop = true;
       a.preload = "auto";
       a.volume = 0;
@@ -422,14 +422,7 @@ const Weather = (() => {
 
   function init() {
     main.addEventListener("click", () => box.classList.toggle("is-open"));
-    load(39.9042, 116.4074); // 立即用默认城市（北京），进入封面即可见
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => load(pos.coords.latitude, pos.coords.longitude),
-        () => {},
-        { timeout: 6000, maximumAge: 600000 }
-      );
-    }
+    load(39.9042, 116.4074); // 固定北京，不做定位，避免定位漂移导致天气不准
   }
 
   return { init };
@@ -551,12 +544,12 @@ function updateMediaSession() {
 }
 
 /* ---------- PWA：Service Worker（网络优先，更新即刷新） ---------- */
-/* 注册地址带 ?v=8：破除 GitHub Pages 对 sw.js 的 CDN 缓存，强制手机每次拉最新 SW。
+/* 注册地址带 ?v=9：破除 GitHub Pages 对 sw.js 的 CDN 缓存，强制手机每次拉最新 SW。
    新 SW 装好即 skipWaiting + 清空所有旧缓存 + 接管页面，下面的 controllerchange 触发自动刷新。 */
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js?v=8").catch(() => {});
+    navigator.serviceWorker.register("sw.js?v=9").catch(() => {});
   });
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
