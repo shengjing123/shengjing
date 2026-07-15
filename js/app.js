@@ -159,8 +159,16 @@ const AudioEngine = (() => {
     if (currentId && playing && instances[currentId]) rampUp(instances[currentId], 280);
   }
 
+  // 缓慢渐隐后暂停（睡眠定时用，避免突然静音惊醒）
+  function fadeOutAndPause(ms, onDone) {
+    if (!currentId || !instances[currentId]) { if (onDone) onDone(); return; }
+    rampDownAndPause(instances[currentId], ms);
+    playing = false;
+    if (onDone) setTimeout(onDone, ms + 40);
+  }
+
   return {
-    play, pause, setMaster,
+    play, pause, setMaster, fadeOutAndPause,
     isPlaying: () => playing,
     current: () => currentId,
   };
@@ -222,6 +230,7 @@ function openPlayer(m) {
   const isPlaying = AudioEngine.current() === m.id && AudioEngine.isPlaying();
   els.player.classList.toggle("is-playing", isPlaying);
   showView("player");
+  updateMediaSession();
 }
 
 function togglePlay() {
@@ -235,9 +244,8 @@ function togglePlay() {
     els.player.classList.add("is-playing");
   }
   refreshListMarkers();
+  updateMediaSession();
 }
-
-/* ---------- 事件绑定 ---------- */
 els.enterBtn.addEventListener("click", () => showView("list"));
 els.backBtn.addEventListener("click", () => { showView("list"); refreshListMarkers(); });
 els.orbBtn.addEventListener("click", togglePlay);
@@ -258,5 +266,182 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+/* ---------- 锁屏播放控制（Media Session API） ---------- */
+function updateMediaSession() {
+  if (!("mediaSession" in navigator) || !activeMode) return;
+  const isActive = AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: activeMode.name,
+      artist: "声境",
+      album: "为敏感的灵魂留一片声音",
+      artwork: [{ src: "assets/icon.svg", sizes: "any", type: "image/svg+xml" }],
+    });
+    navigator.mediaSession.playbackState = isActive ? "playing" : "paused";
+    const doPlay = () => { if (!(AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id)) togglePlay(); };
+    const doPause = () => { if (AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id) togglePlay(); };
+    navigator.mediaSession.setActionHandler("play", doPlay);
+    navigator.mediaSession.setActionHandler("pause", doPause);
+    navigator.mediaSession.setActionHandler("previoustrack", null);
+    navigator.mediaSession.setActionHandler("nexttrack", null);
+  } catch (e) {}
+}
+
+/* ---------- 天气预报（Open-Meteo，免 key、国内可访问） ---------- */
+const Weather = (() => {
+  const box = document.getElementById("weather");
+  const main = document.getElementById("weatherMain");
+  const icon = document.getElementById("wxIcon");
+  const cond = document.getElementById("wxCond");
+  const temp = document.getElementById("wxTemp");
+  const suggest = document.getElementById("wxSuggest");
+  const forecast = document.getElementById("weatherForecast");
+
+  // WMO 天气代码 → [中文, emoji, 建议模式id]
+  const CODE = {
+    0:["晴","☀","morning"], 1:["晴间多云","🌤","morning"], 2:["多云","⛅","forest"], 3:["阴","☁","meditate"],
+    45:["雾","🌫","fireplace"], 48:["雾凇","🌫","fireplace"],
+    51:["毛毛雨","🌦","rain"], 53:["毛毛雨","🌦","rain"], 55:["毛毛雨","🌦","rain"],
+    56:["冻毛雨","🌧","rain"], 57:["冻毛雨","🌧","rain"],
+    61:["小雨","🌧","rain"], 63:["中雨","🌧","rain"], 65:["大雨","🌧","rain"],
+    66:["冻雨","🌧","rain"], 67:["冻雨","🌧","rain"],
+    71:["小雪","🌨","white"], 73:["中雪","🌨","white"], 75:["大雪","🌨","white"], 77:["雪粒","🌨","white"],
+    80:["阵雨","🌦","rain"], 81:["阵雨","🌦","rain"], 82:["强阵雨","⛈","rain"],
+    85:["阵雪","🌨","white"], 86:["强阵雪","🌨","white"],
+    95:["雷阵雨","⛈","rain"], 96:["雷阵雨伴雹","⛈","rain"], 99:["强雷暴","⛈","rain"],
+  };
+  const pick = (c) => CODE[c] || ["未知", "·", "white"];
+  const suggestName = (id) => { const m = MODES.find((x) => x.id === id); return m ? m.name : ""; };
+  const DAYS = ["今天", "明天", "后天"];
+
+  // 按当前时间给一个稳妥的“此刻建议”（无网络 / 无定位时也优雅）
+  function timeSuggest() {
+    const h = new Date().getHours();
+    if (h < 6) return "night";
+    if (h < 11) return "morning";
+    if (h < 14) return "forest";
+    if (h < 18) return "stream";
+    if (h < 22) return "fireplace";
+    return "night";
+  }
+
+  function render(data) {
+    const cur = data.current;
+    const info = pick(cur.weather_code);
+    icon.textContent = info[1];
+    cond.textContent = info[0];
+    temp.textContent = Math.round(cur.temperature_2m) + "°";
+    const sn = suggestName(info[2]);
+    suggest.textContent = sn ? "· 适合听「" + sn + "」" : "";
+    const d = data.daily;
+    let html = "";
+    for (let i = 0; i < 3 && i < d.time.length; i++) {
+      const p = pick(d.weather_code[i]);
+      html += '<div class="wf-item"><span class="wf-day">' + DAYS[i] + '</span>' +
+        '<span class="wf-icon">' + p[1] + '</span>' +
+        '<span class="wf-temp">' + Math.round(d.temperature_2m_min[i]) + "° / " + Math.round(d.temperature_2m_max[i]) + "°</span></div>";
+    }
+    forecast.innerHTML = html;
+    box.classList.add("is-ready");
+  }
+
+  // 兜底：拿不到天气时，按当前时段温柔推荐一个模式，绝不空着
+  function renderFallback() {
+    const sn = suggestName(timeSuggest());
+    icon.textContent = "🌗";
+    cond.textContent = "此刻";
+    temp.textContent = "";
+    suggest.textContent = sn ? "· 适合听「" + sn + "」" : "";
+    forecast.innerHTML = "";
+    box.classList.add("is-ready");
+  }
+
+  function load(lat, lon) {
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+      "&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_min,temperature_2m_max" +
+      "&timezone=auto&forecast_days=3";
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9000);
+    fetch(url, { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => { clearTimeout(timer); render(data); })
+      .catch(() => { clearTimeout(timer); renderFallback(); });
+  }
+
+  function init() {
+    main.addEventListener("click", () => box.classList.toggle("is-open"));
+    // 立即用默认城市（北京）拉取，进入列表页就能看到天气，不卡在定位等待
+    load(39.9042, 116.4074);
+    // 若允许定位，再用更精确坐标静默刷新一次（不影响首屏显示）
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => load(pos.coords.latitude, pos.coords.longitude),
+        () => {},
+        { timeout: 6000, maximumAge: 600000 }
+      );
+    }
+  }
+
+  return { init };
+})();
+
+/* ---------- 睡眠定时 ---------- */
+const Sleep = (() => {
+  const btn = document.getElementById("sleepBtn");
+  const label = document.getElementById("sleepLabel");
+  const menu = document.getElementById("sleepMenu");
+  let timer = null, tick = null, deadline = 0;
+
+  function fmt(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  }
+  function syncLabel() {
+    label.textContent = deadline ? "剩 " + fmt(deadline - Date.now()) : "定时";
+  }
+  function closeMenu() { btn.classList.remove("is-menu-open"); }
+  function clear() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (tick) { clearInterval(tick); tick = null; }
+    deadline = 0;
+    label.textContent = "定时";
+    btn.classList.remove("is-on");
+  }
+  function set(min) {
+    clear();
+    if (!min) return;
+    deadline = Date.now() + min * 60000;
+    btn.classList.add("is-on");
+    syncLabel();
+    tick = setInterval(syncLabel, 1000);
+    timer = setTimeout(() => {
+      if (tick) { clearInterval(tick); tick = null; }
+      if (activeMode && AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id) {
+        AudioEngine.fadeOutAndPause(6000, () => {
+          els.player.classList.remove("is-playing");
+          refreshListMarkers();
+          updateMediaSession();
+        });
+      }
+      deadline = 0;
+      label.textContent = "定时";
+      btn.classList.remove("is-on");
+    }, min * 60000);
+  }
+
+  btn.addEventListener("click", (e) => {
+    if (e.target.closest(".sleep-menu")) return;
+    btn.classList.toggle("is-menu-open");
+  });
+  menu.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-min]");
+    if (b) { set(parseInt(b.dataset.min, 10)); closeMenu(); }
+  });
+  document.addEventListener("click", (e) => { if (!e.target.closest("#sleepWrap")) closeMenu(); });
+
+  return {};
+})();
+
 /* ---------- 初始化 ---------- */
 renderList();
+Weather.init();
