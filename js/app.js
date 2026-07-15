@@ -551,6 +551,15 @@ function updateMediaSession() {
 }
 
 /* ---------- PWA：Service Worker（网络优先，更新即刷新） ---------- */
+
+// 强制刷新入口：手机卡在老版本时，用 ?reset=1 打开本页即可清空所有旧缓存
+if ("caches" in window && location.search.indexOf("reset") >= 0) {
+  caches.keys()
+    .then((ks) => Promise.all(ks.map((k) => caches.delete(k))))
+    .catch(() => {})
+    .finally(() => { location.replace(location.pathname + location.hash); });
+}
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch(() => {});
