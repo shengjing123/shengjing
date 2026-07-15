@@ -1,5 +1,5 @@
 /* 声境 · Service Worker（仅缓存应用外壳 + 运行时缓存音频，离线可用） */
-const CACHE = "shengjing-v1";
+const CACHE = "shengjing-v4";
 const SHELL = [
   "./",
   "./index.html",
@@ -7,6 +7,8 @@ const SHELL = [
   "./js/app.js",
   "./manifest.json",
   "./assets/icon.svg",
+  "./assets/icon-512.png",
+  "./assets/apple-touch-icon.png",
 ];
 
 self.addEventListener("install", (e) => {
