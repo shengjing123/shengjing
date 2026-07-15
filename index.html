@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/style.css?v=10" />
+  <link rel="stylesheet" href="css/style.css?v=11" />
   <!-- 提前应用已保存的主题，避免闪烁；?reset=1 时彻底注销旧 Service Worker 与缓存 -->
   <script>
     (function () {
@@ -26,7 +26,18 @@
           .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister(); })); })
           .catch(function () {})
           .then(function () {
-            if ("caches" in window) return caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); });
+            // 只清【无音频】的缓存（代码/图标），保留含 .mp3 的缓存——手动刷新也不会把声音搞没
+            if (!("caches" in window)) return;
+            return caches.keys().then(function (ks) {
+              return Promise.all(ks.map(function (k) {
+                return caches.open(k).then(function (c) {
+                  return c.keys().then(function (reqs) {
+                    var hasAudio = reqs.some(function (r) { return r.url.indexOf(".mp3") >= 0; });
+                    if (!hasAudio) return caches.delete(k);
+                  });
+                });
+              }));
+            });
           })
           .catch(function () {})
           .then(function () { location.replace(location.pathname + location.hash); });
@@ -124,6 +135,6 @@
 
   </main>
 
-  <script src="js/app.js?v=10"></script>
+  <script src="js/app.js?v=11"></script>
 </body>
 </html>
