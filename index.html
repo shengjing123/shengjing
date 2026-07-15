@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN" data-theme="warm">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
-  <meta name="theme-color" content="#16171b" />
+  <meta name="theme-color" content="#1c1714" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="声境" />
@@ -12,6 +12,15 @@
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
   <link rel="stylesheet" href="css/style.css" />
+  <!-- 提前应用已保存的主题，避免闪烁 -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("shengjing-theme");
+        if (t) document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <main id="app">
@@ -21,14 +30,9 @@
       <div class="cover-inner">
         <h1 class="brand">声境</h1>
         <p class="brand-sub">为敏感的灵魂留一片声音</p>
-        <button class="enter-btn" id="enterBtn" type="button">进入</button>
-      </div>
-    </section>
+        <p class="cover-date" id="coverDate">—</p>
 
-    <!-- 第二级 · 模式列表页 -->
-    <section class="view view-list" id="view-list">
-      <header class="list-header">
-        <h2 class="list-title">选择你的声境</h2>
+        <!-- 天气：柔和一条，放在封面（不再占据列表顶部） -->
         <div class="weather" id="weather">
           <button class="weather-main" id="weatherMain" type="button" aria-label="天气与模式建议">
             <span class="wx-icon" id="wxIcon">🌤</span>
@@ -37,6 +41,15 @@
           </button>
           <div class="weather-forecast" id="weatherForecast"></div>
         </div>
+
+        <button class="enter-btn" id="enterBtn" type="button">进入</button>
+      </div>
+    </section>
+
+    <!-- 第二级 · 模式列表页 -->
+    <section class="view view-list" id="view-list">
+      <header class="list-header">
+        <h2 class="list-title">选择你的声境</h2>
       </header>
       <ul class="mode-list" id="modeList"></ul>
     </section>
@@ -84,6 +97,17 @@
         </div>
       </div>
     </section>
+
+    <!-- 外观主题切换（4 套配色任选） -->
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="外观主题">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="9" r="1.1" fill="currentColor" stroke="none"></circle><circle cx="16" cy="15" r="1.4" fill="currentColor" stroke="none"></circle></svg>
+    </button>
+    <div class="theme-menu" id="themeMenu">
+      <button type="button" data-theme="dark"><span class="sw"></span>暗夜</button>
+      <button type="button" data-theme="warm"><span class="sw"></span>暖夜</button>
+      <button type="button" data-theme="dawn"><span class="sw"></span>晨曦</button>
+      <button type="button" data-theme="dusk"><span class="sw"></span>暮蓝</button>
+    </div>
 
   </main>
 
