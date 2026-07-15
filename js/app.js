@@ -543,14 +543,14 @@ function updateMediaSession() {
   } catch (e) {}
 }
 
-/* ---------- PWA：Service Worker（缓存优先 + 版本号更新） ---------- */
-/* 注册地址带 ?v=10：破除 GitHub Pages 对 sw.js 的 CDN 缓存，强制手机拉最新 SW。
-   文件带 ?v=N：URL 一变即视为新文件，SW 自动拉取，更新与速度兼得。
-   新 SW 装好即 skipWaiting + 清空所有旧缓存 + 接管页面，下面的 controllerchange 触发自动刷新。 */
+/* ---------- PWA：Service Worker（缓存永久保留，升级不再清空） ---------- */
+/* 注册地址带 ?v=11：破除 GitHub Pages 对 sw.js 的 CDN 缓存，强制手机拉最新 SW。
+   文件带 ?v=N：URL 一变即视为新文件，SW 后台静默拉取，更新与速度兼得。
+   新 SW 装好即 skipWaiting + 接管页面；但【不再清空用户缓存】，已下载音频永久保留、升级不重下。 */
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js?v=10").catch(() => {});
+    navigator.serviceWorker.register("sw.js?v=11").catch(() => {});
   });
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
