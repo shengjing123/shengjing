@@ -1,5 +1,5 @@
-/* 声境 · Service Worker（仅缓存应用外壳 + 运行时缓存音频，离线可用） */
-const CACHE = "shengjing-v4";
+/* 声境 · Service Worker（网络优先，更新即生效；音频离线可播） */
+const CACHE = "shengjing-v5";
 const SHELL = [
   "./",
   "./index.html",
@@ -30,7 +30,7 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
-  // 音频：运行时 cache-first（首次加载后离线可播）
+  // 音频：缓存优先（首次加载后离线可播），否则走网络
   if (url.pathname.endsWith(".mp3")) {
     e.respondWith(
       caches.open(CACHE).then((c) =>
@@ -42,6 +42,14 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 其它：缓存优先，回退网络
-  e.respondWith(caches.match(req).then((res) => res || fetch(req)));
+  // 其它资源：网络优先，失败回退缓存（保证每次都拿到最新代码）
+  e.respondWith(
+    fetch(req)
+      .then((r) => {
+        const copy = r.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+        return r;
+      })
+      .catch(() => caches.match(req).then((res) => res || caches.match("./index.html")))
+  );
 });
