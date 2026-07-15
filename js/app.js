@@ -3,6 +3,7 @@
    - 三级导航：封面 → 列表 → 播放
    - 每种模式 = 多音轨分层混播（lo-fi 渐入，呵护敏感耳朵）
    - 呼吸光晕：播放脉动 / 暂停静止
+   - 封面：日期 + 农历；天气柔和一条；4 套主题可切换
    =========================================================== */
 
 /* ---------- 9 种模式配置 ---------- */
@@ -78,7 +79,7 @@ const MODES = [
 
 /* ---------- 音频引擎 ---------- */
 const AudioEngine = (() => {
-  let instances = {};      // modeId -> [{ audio, gain, label }]
+  let instances = {};
   let currentId = null;
   let playing = false;
   let master = 0.7;
@@ -101,12 +102,11 @@ const AudioEngine = (() => {
     return list;
   }
 
-  // 渐入到目标音量（呵护敏感耳朵，避免突然响起）
   function rampUp(list, ms) {
     clearInterval(rampInterval);
     const froms = list.map((o) => o.audio.volume);
     const tos = list.map((o) => targetVol(o.gain));
-    const steps = 26, stepMs = ms / steps;
+    const steps = 26, stepMs = Math.max(8, ms / steps);
     let i = 0;
     rampInterval = setInterval(() => {
       i++;
@@ -116,11 +116,10 @@ const AudioEngine = (() => {
     }, stepMs);
   }
 
-  // 渐出并暂停（传出模式用，避免爆音）
   function rampDownAndPause(list, ms) {
     clearInterval(silenceInterval);
     const froms = list.map((o) => o.audio.volume);
-    const steps = 14, stepMs = ms / steps;
+    const steps = 14, stepMs = Math.max(8, ms / steps);
     let i = 0;
     silenceInterval = setInterval(() => {
       i++;
@@ -159,7 +158,6 @@ const AudioEngine = (() => {
     if (currentId && playing && instances[currentId]) rampUp(instances[currentId], 280);
   }
 
-  // 缓慢渐隐后暂停（睡眠定时用，避免突然静音惊醒）
   function fadeOutAndPause(ms, onDone) {
     if (!currentId || !instances[currentId]) { if (onDone) onDone(); return; }
     rampDownAndPause(instances[currentId], ms);
@@ -251,7 +249,6 @@ els.backBtn.addEventListener("click", () => { showView("list"); refreshListMarke
 els.orbBtn.addEventListener("click", togglePlay);
 els.vol.addEventListener("input", (e) => AudioEngine.setMaster(parseFloat(e.target.value)));
 
-/* 空格键在播放页快速播放/暂停 */
 document.addEventListener("keydown", (e) => {
   if (e.code === "Space" && els.player.classList.contains("is-active") && activeMode) {
     e.preventDefault();
@@ -259,33 +256,91 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-/* ---------- PWA：Service Worker（离线可用，优雅降级） ---------- */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  });
-}
+/* ---------- 农历算法（1900–2100，自包含，无需联网） ---------- */
+const Lunar = (() => {
+  const lunarInfo = [
+    0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+    0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
+    0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+    0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+    0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+    0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,0x0e950,0x06aa0,
+    0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+    0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6,
+    0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
+    0x04af2,0x04970,0x064b0,0x074a7,0x0ea50,0x06b58,0x055c0,0x0ab60,0x096d5,0x092e0,
+    0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,
+    0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,
+    0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,
+    0x05aa0,0x076a3,0x096d0,0x04afb,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,
+    0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0,
+    0x14b63,0x09370,0x049f8,0x04970,0x064b0,0x168a6,0x0ea50,0x06b20,0x1a6c4,0x0aae0,
+    0x0a2e0,0x0d2e3,0x0c960,0x0d557,0x0d4a0,0x0da50,0x05d55,0x056a0,0x0a6d0,0x055d4,
+    0x052d0,0x0a9b8,0x0a950,0x0b4a0,0x0b6a6,0x0ad50,0x055a0,0x0aba4,0x0a5b0,0x052b0,
+    0x0b273,0x06930,0x07337,0x06aa0,0x0ad50,0x14b55,0x04b60,0x0a570,0x054e4,0x0d160,
+    0x0e968,0x0d520,0x0daa0,0x16aa6,0x056d0,0x04ae0,0x0a9d4,0x0a2d0,0x0d150,0x0f250,
+  ];
+  const Gan = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+  const Zhi = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+  const Animals = ["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"];
+  const monthCN = ["正","二","三","四","五","六","七","八","九","十","冬","腊"];
+  const dayCN = ["初一","初二","初三","初四","初五","初六","初七","初八","初九","初十",
+    "十一","十二","十三","十四","十五","十六","十七","十八","十九","二十",
+    "廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"];
 
-/* ---------- 锁屏播放控制（Media Session API） ---------- */
-function updateMediaSession() {
-  if (!("mediaSession" in navigator) || !activeMode) return;
-  const isActive = AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id;
-  try {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: activeMode.name,
-      artist: "声境",
-      album: "为敏感的灵魂留一片声音",
-      artwork: [{ src: "assets/icon.svg", sizes: "any", type: "image/svg+xml" }],
-    });
-    navigator.mediaSession.playbackState = isActive ? "playing" : "paused";
-    const doPlay = () => { if (!(AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id)) togglePlay(); };
-    const doPause = () => { if (AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id) togglePlay(); };
-    navigator.mediaSession.setActionHandler("play", doPlay);
-    navigator.mediaSession.setActionHandler("pause", doPause);
-    navigator.mediaSession.setActionHandler("previoustrack", null);
-    navigator.mediaSession.setActionHandler("nexttrack", null);
-  } catch (e) {}
-}
+  const lYearDays = (y) => { let s = 348; for (let i = 0x8000; i > 0x8; i >>= 1) s += (lunarInfo[y - 1900] & i) ? 1 : 0; return s + leapDays(y); };
+  const leapDays = (y) => { return leapMonth(y) ? ((lunarInfo[y - 1900] & 0x10000) ? 30 : 29) : 0; };
+  const leapMonth = (y) => { return lunarInfo[y - 1900] & 0xf; };
+  const monthDays = (y, m) => { return ((lunarInfo[y - 1900] & (0x10000 >> m)) ? 30 : 29); };
+
+  function solar2lunar(y, m, d) {
+    let offset = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1900, 0, 31)) / 86400000);
+    let i, temp = 0;
+    for (i = 1900; i < 2101 && offset > 0; i++) { temp = lYearDays(i); offset -= temp; }
+    if (offset < 0) { offset += temp; i--; }
+    const year = i;
+    const lm = leapMonth(year);
+    let isLeap = false, month;
+    for (i = 1; i < 13 && offset > 0; i++) {
+      if (lm > 0 && i === lm + 1 && !isLeap) { --i; isLeap = true; temp = leapDays(year); }
+      else { temp = monthDays(year, i); }
+      if (isLeap && i === lm + 1) isLeap = false;
+      offset -= temp;
+    }
+    if (offset === 0 && lm > 0 && i === lm + 1) {
+      if (isLeap) { isLeap = false; } else { isLeap = true; --i; }
+    }
+    if (offset < 0) { offset += temp; --i; }
+    month = i;
+    const day = offset + 1;
+    return { year, month, day, isLeap };
+  }
+
+  function format(y, m, d) {
+    const L = solar2lunar(y, m, d);
+    const gz = Gan[(L.year - 4) % 10] + Zhi[(L.year - 4) % 12];
+    const animal = Animals[(L.year - 4) % 12];
+    const mName = (L.isLeap ? "闰" : "") + monthCN[L.month - 1] + "月";
+    const dName = dayCN[L.day - 1];
+    return { gz, animal, mName, dName, text: `农历 ${gz}${animal}年 ${mName}${dName}` };
+  }
+
+  return { format };
+})();
+
+/* ---------- 封面日期 + 农历 ---------- */
+const CoverDate = (() => {
+  const el = document.getElementById("coverDate");
+  const weekCN = ["日", "一", "二", "三", "四", "五", "六"];
+  function render() {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
+    const w = weekCN[now.getDay()];
+    const lunar = Lunar.format(y, m, d);
+    el.textContent = `${y}年${m}月${d}日 周${w} · ${lunar.text}`;
+  }
+  return { render };
+})();
 
 /* ---------- 天气预报（Open-Meteo，免 key、国内可访问） ---------- */
 const Weather = (() => {
@@ -297,7 +352,6 @@ const Weather = (() => {
   const suggest = document.getElementById("wxSuggest");
   const forecast = document.getElementById("weatherForecast");
 
-  // WMO 天气代码 → [中文, emoji, 建议模式id]
   const CODE = {
     0:["晴","☀","morning"], 1:["晴间多云","🌤","morning"], 2:["多云","⛅","forest"], 3:["阴","☁","meditate"],
     45:["雾","🌫","fireplace"], 48:["雾凇","🌫","fireplace"],
@@ -314,7 +368,6 @@ const Weather = (() => {
   const suggestName = (id) => { const m = MODES.find((x) => x.id === id); return m ? m.name : ""; };
   const DAYS = ["今天", "明天", "后天"];
 
-  // 按当前时间给一个稳妥的“此刻建议”（无网络 / 无定位时也优雅）
   function timeSuggest() {
     const h = new Date().getHours();
     if (h < 6) return "night";
@@ -333,19 +386,18 @@ const Weather = (() => {
     temp.textContent = Math.round(cur.temperature_2m) + "°";
     const sn = suggestName(info[2]);
     suggest.textContent = sn ? "· 适合听「" + sn + "」" : "";
-    const d = data.daily;
+    const dl = data.daily;
     let html = "";
-    for (let i = 0; i < 3 && i < d.time.length; i++) {
-      const p = pick(d.weather_code[i]);
+    for (let i = 0; i < 3 && i < dl.time.length; i++) {
+      const p = pick(dl.weather_code[i]);
       html += '<div class="wf-item"><span class="wf-day">' + DAYS[i] + '</span>' +
         '<span class="wf-icon">' + p[1] + '</span>' +
-        '<span class="wf-temp">' + Math.round(d.temperature_2m_min[i]) + "° / " + Math.round(d.temperature_2m_max[i]) + "°</span></div>";
+        '<span class="wf-temp">' + Math.round(dl.temperature_2m_min[i]) + "° / " + Math.round(dl.temperature_2m_max[i]) + "°</span></div>";
     }
     forecast.innerHTML = html;
     box.classList.add("is-ready");
   }
 
-  // 兜底：拿不到天气时，按当前时段温柔推荐一个模式，绝不空着
   function renderFallback() {
     const sn = suggestName(timeSuggest());
     icon.textContent = "🌗";
@@ -370,9 +422,7 @@ const Weather = (() => {
 
   function init() {
     main.addEventListener("click", () => box.classList.toggle("is-open"));
-    // 立即用默认城市（北京）拉取，进入列表页就能看到天气，不卡在定位等待
-    load(39.9042, 116.4074);
-    // 若允许定位，再用更精确坐标静默刷新一次（不影响首屏显示）
+    load(39.9042, 116.4074); // 立即用默认城市（北京），进入封面即可见
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => load(pos.coords.latitude, pos.coords.longitude),
@@ -442,6 +492,79 @@ const Sleep = (() => {
   return {};
 })();
 
+/* ---------- 外观主题切换（4 套配色） ---------- */
+const Theme = (() => {
+  const btn = document.getElementById("themeBtn");
+  const menu = document.getElementById("themeMenu");
+  const KEY = "shengjing-theme";
+  const THEMES = ["dark", "warm", "dawn", "dusk"];
+
+  function apply(name) {
+    document.documentElement.setAttribute("data-theme", name);
+    try { localStorage.setItem(KEY, name); } catch (e) {}
+    menu.querySelectorAll("button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.theme === name);
+    });
+  }
+  function sync() {
+    let cur = document.documentElement.getAttribute("data-theme") || "warm";
+    if (!THEMES.includes(cur)) cur = "warm";
+    menu.querySelectorAll("button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.theme === cur);
+    });
+  }
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    menu.classList.toggle("is-open");
+  });
+  menu.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-theme]");
+    if (b) { apply(b.dataset.theme); menu.classList.remove("is-open"); }
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#themeMenu") && e.target !== btn) menu.classList.remove("is-open");
+  });
+
+  return { sync };
+})();
+
+/* ---------- 锁屏播放控制（Media Session API） ---------- */
+function updateMediaSession() {
+  if (!("mediaSession" in navigator) || !activeMode) return;
+  const isActive = AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: activeMode.name,
+      artist: "声境",
+      album: "为敏感的灵魂留一片声音",
+      artwork: [{ src: "assets/icon.svg", sizes: "any", type: "image/svg+xml" }],
+    });
+    navigator.mediaSession.playbackState = isActive ? "playing" : "paused";
+    const doPlay = () => { if (!(AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id)) togglePlay(); };
+    const doPause = () => { if (AudioEngine.isPlaying() && AudioEngine.current() === activeMode.id) togglePlay(); };
+    navigator.mediaSession.setActionHandler("play", doPlay);
+    navigator.mediaSession.setActionHandler("pause", doPause);
+    navigator.mediaSession.setActionHandler("previoustrack", null);
+    navigator.mediaSession.setActionHandler("nexttrack", null);
+  } catch (e) {}
+}
+
+/* ---------- PWA：Service Worker（网络优先，更新即刷新） ---------- */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    location.reload();
+  });
+}
+
 /* ---------- 初始化 ---------- */
 renderList();
+CoverDate.render();
+Theme.sync();
 Weather.init();
