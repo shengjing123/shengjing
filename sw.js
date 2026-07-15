@@ -1,5 +1,5 @@
-/* 声境 · Service Worker（网络优先，更新即生效；音频离线可播） */
-const CACHE = "shengjing-v5";
+/* 声境 · Service Worker（v6：启动即清空所有旧缓存，根治手机卡老版本） */
+const CACHE = "shengjing-v6";
 const SHELL = [
   "./",
   "./index.html",
@@ -12,15 +12,18 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (e) => {
+  // 安装即接管，不等旧 SW 释放
+  self.skipWaiting();
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting())
+    caches.open(CACHE).then((c) => c.addAll(SHELL).catch(() => {}))
   );
 });
 
 self.addEventListener("activate", (e) => {
+  // 关键：删掉所有旧缓存（v1~v5 任意名称），手机上残留的老页面一律作废
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
