@@ -10,7 +10,7 @@
   <title>声境 · 为敏感的灵魂留一片声音</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="assets/icon.svg" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -29,6 +29,14 @@
     <section class="view view-list" id="view-list">
       <header class="list-header">
         <h2 class="list-title">选择你的声境</h2>
+        <div class="weather" id="weather">
+          <button class="weather-main" id="weatherMain" type="button" aria-label="天气与模式建议">
+            <span class="wx-icon" id="wxIcon">🌤</span>
+            <span class="wx-text"><span class="wx-cond" id="wxCond">天气加载中…</span><span class="wx-temp" id="wxTemp"></span></span>
+            <span class="wx-suggest" id="wxSuggest"></span>
+          </button>
+          <div class="weather-forecast" id="weatherForecast"></div>
+        </div>
       </header>
       <ul class="mode-list" id="modeList"></ul>
     </section>
@@ -59,6 +67,19 @@
           <div class="vol" id="volWrap">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M17 8.5a4 4 0 0 1 0 7"></path></svg>
             <input type="range" id="vol" min="0" max="1" step="0.01" value="0.7" aria-label="音量" />
+          </div>
+          <div class="sleep" id="sleepWrap">
+            <button class="sleep-btn" id="sleepBtn" type="button" aria-label="睡眠定时">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2.5"></path><path d="M9 2h6"></path></svg>
+              <span class="sleep-label" id="sleepLabel">定时</span>
+            </button>
+            <div class="sleep-menu" id="sleepMenu">
+              <button type="button" data-min="15">15</button>
+              <button type="button" data-min="30">30</button>
+              <button type="button" data-min="45">45</button>
+              <button type="button" data-min="60">60</button>
+              <button type="button" data-min="0">关</button>
+            </div>
           </div>
         </div>
       </div>
