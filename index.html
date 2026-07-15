@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#16171b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="声境" />
+  <title>声境 · 为敏感的灵魂留一片声音</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/icon.svg" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main id="app">
+
+    <!-- 第一级 · 封面页 -->
+    <section class="view view-cover is-active" id="view-cover">
+      <div class="cover-inner">
+        <h1 class="brand">声境</h1>
+        <p class="brand-sub">为敏感的灵魂留一片声音</p>
+        <button class="enter-btn" id="enterBtn" type="button">进入</button>
+      </div>
+    </section>
+
+    <!-- 第二级 · 模式列表页 -->
+    <section class="view view-list" id="view-list">
+      <header class="list-header">
+        <h2 class="list-title">选择你的声境</h2>
+      </header>
+      <ul class="mode-list" id="modeList"></ul>
+    </section>
+
+    <!-- 第三级 · 播放页 -->
+    <section class="view view-player" id="view-player">
+      <button class="back-btn" id="backBtn" type="button" aria-label="返回">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
+
+      <div class="player-inner">
+        <h2 class="player-name" id="playerName"></h2>
+        <p class="player-desc" id="playerDesc"></p>
+
+        <div class="orb-wrap">
+          <button class="player-orb" id="orbBtn" type="button" aria-label="播放或暂停">
+            <span class="icon icon-play" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.52.86l10.5-6.5a1 1 0 0 0 0-1.72L9.52 4.64A1 1 0 0 0 8 5.5z"></path></svg>
+            </span>
+            <span class="icon icon-pause" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><rect x="7" y="5" width="3.4" height="14" rx="1.4"></rect><rect x="13.6" y="5" width="3.4" height="14" rx="1.4"></rect></svg>
+            </span>
+          </button>
+        </div>
+
+        <div class="player-foot">
+          <p class="now-sound" id="nowSound"></p>
+          <div class="vol" id="volWrap">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M17 8.5a4 4 0 0 1 0 7"></path></svg>
+            <input type="range" id="vol" min="0" max="1" step="0.01" value="0.7" aria-label="音量" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

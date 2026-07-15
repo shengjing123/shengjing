@@ -1,0 +1,346 @@
+/* ===========================================================
+   声境 · 暗调柔和环境音
+   配色：深灰 / 墨蓝 / 暖棕  ·  极简 · 无弹窗 · 无广告
+   =========================================================== */
+
+:root {
+  --bg: #16171b;
+  --bg-ink: rgba(38, 54, 74, 0.40);   /* 墨蓝 */
+  --bg-brown: rgba(64, 48, 38, 0.34); /* 暖棕 */
+  --surface: rgba(255, 255, 255, 0.022);
+  --surface-hover: rgba(255, 255, 255, 0.04);
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --text: #e9e4dc;
+  --text-dim: #908a82;
+  --accent: #c9a87c;                  /* 暖棕光晕（小夜灯） */
+  --accent-soft: rgba(201, 168, 124, 0.5);
+
+  --font-serif: "Noto Serif SC", "Songti SC", "STSong", "SimSun", "Source Han Serif SC", serif;
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+body {
+  /* 极轻微的墨蓝 / 暖棕晕染，固定在暗底上 */
+  background:
+    radial-gradient(120% 80% at 18% -5%, var(--bg-ink), transparent 58%),
+    radial-gradient(110% 85% at 85% 105%, var(--bg-brown), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* ---------- 视图切换（极简淡入淡出） ---------- */
+.view {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 1.5rem) 1.5rem calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.55s var(--ease);
+  will-change: opacity;
+}
+.view.is-active { opacity: 1; visibility: visible; }
+
+/* ===========================================================
+   第一级 · 封面页
+   =========================================================== */
+.view-cover { text-align: center; }
+
+.cover-inner { display: flex; flex-direction: column; align-items: center; gap: 1.4rem; }
+
+.brand {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(3.2rem, 15vw, 5.4rem);
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;            /* 抵消末字间距，视觉居中 */
+  color: var(--text);
+  line-height: 1;
+}
+
+.brand-sub {
+  margin-top: 0.2rem;
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  font-weight: 300;
+}
+
+.enter-btn {
+  margin-top: 2.6rem;
+  padding: 0.72rem 2.6rem 0.72rem calc(2.6rem + 0.4em);
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  letter-spacing: 0.4em;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.45s var(--ease), color 0.45s var(--ease), background 0.45s var(--ease);
+}
+.enter-btn:hover,
+.enter-btn:focus-visible {
+  border-color: var(--accent-soft);
+  color: var(--accent);
+  background: rgba(201, 168, 124, 0.06);
+  outline: none;
+}
+
+/* ===========================================================
+   第二级 · 模式列表页
+   =========================================================== */
+.view-list { justify-content: flex-start; }
+.view-list.is-active { justify-content: flex-start; }
+
+.list-header {
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 3rem) 1.25rem 1.6rem;
+}
+.list-title {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 1.55rem;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  color: var(--text);
+}
+
+.mode-list {
+  list-style: none;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 1.25rem calc(env(safe-area-inset-bottom, 0px) + 2.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  flex: 1 1 auto;          /* 占满剩余高度 */
+  min-height: 0;           /* 允许在父容器内滚动 */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.34rem;
+  padding: 1.05rem 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.45s var(--ease), transform 0.45s var(--ease), background 0.45s var(--ease);
+}
+.mode-card:hover,
+.mode-card:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+  transform: translateY(-2px);
+  outline: none;
+}
+.mode-card.is-playing {
+  border-color: var(--accent-soft);
+  background: rgba(201, 168, 124, 0.05);
+}
+.mc-name {
+  font-size: 1.06rem;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.mc-name::before {
+  content: "";
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+  box-shadow: 0 0 8px 1px rgba(201, 168, 124, 0.6);
+}
+.mode-card.is-playing .mc-name::before { opacity: 1; }
+.mc-desc {
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  font-weight: 300;
+}
+
+/* ===========================================================
+   第三级 · 播放页
+   =========================================================== */
+.view-player { text-align: center; }
+
+.back-btn {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 1.1rem);
+  left: 1.1rem;
+  width: 42px; height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.4s var(--ease), border-color 0.4s var(--ease);
+  z-index: 5;
+}
+.back-btn:hover { color: var(--text); border-color: var(--line-strong); }
+
+.player-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 420px;
+  flex: 1;
+  justify-content: center;
+}
+
+.player-name {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(2rem, 9vw, 2.7rem);
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  color: var(--text);
+}
+.player-desc {
+  margin-top: 0.7rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  font-weight: 300;
+  line-height: 1.6;
+  max-width: 22em;
+}
+
+/* 呼吸光晕按钮 */
+.orb-wrap { margin: 3.4rem 0; }
+
+.player-orb {
+  position: relative;
+  width: 98px; height: 98px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 42%, rgba(201, 168, 124, 0.16), rgba(201, 168, 124, 0.03) 70%);
+  border: 1px solid rgba(201, 168, 124, 0.28);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 微弱的呼吸光晕（小夜灯） */
+.player-orb::after {
+  content: "";
+  position: absolute;
+  inset: -32px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 168, 124, 0.34) 0%, rgba(201, 168, 124, 0) 70%);
+  filter: blur(9px);
+  opacity: 0.28;                 /* 暂停时：静止的微弱光晕 */
+  z-index: -1;
+  transition: opacity 0.8s var(--ease);
+}
+/* 播放时：光晕持续缓慢脉动 */
+.view-player.is-playing .player-orb::after {
+  animation: breathe 5.6s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(0.9);  opacity: 0.24; }
+  50%      { transform: scale(1.22); opacity: 0.68; }
+}
+.player-orb:active { transform: scale(0.97); }
+
+.icon { display: grid; place-items: center; color: var(--text); }
+.icon-play { margin-left: 3px; }      /* 视觉居中三角形 */
+.icon-pause { display: none; }
+.view-player.is-playing .icon-play { display: none; }
+.view-player.is-playing .icon-pause { display: grid; }
+
+/* 底部：当前声音名称 + 极简音量 */
+.player-foot {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.3rem;
+  margin-top: auto;
+  padding-top: 2rem;
+}
+.now-sound {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  font-weight: 300;
+  line-height: 1.6;
+  max-width: 24em;
+  opacity: 0.85;
+}
+
+.vol {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: min(240px, 72%);
+  color: var(--text-dim);
+  opacity: 0.5;
+  transition: opacity 0.35s var(--ease);
+}
+.vol:hover, .vol:focus-within { opacity: 1; }
+.vol input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  cursor: pointer;
+}
+.vol input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px 1px rgba(201, 168, 124, 0.45);
+}
+.vol input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* 减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .view { transition: opacity 0.2s linear; }
+  .view-player.is-playing .player-orb::after { animation: none; opacity: 0.45; }
+}
